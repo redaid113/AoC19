@@ -165,144 +165,36 @@ class IntCode {
   }
 }
 
-const UP = 0;
-const RIGHT = 1;
-const DOWN = 2;
-const LEFT = 3;
-
-class Robot {
-  constructor(instructions) {
-    this.direction = UP;
-    this.location = { x: 0, y: 0 };
-    this.brain = new IntCode(instructions);
-    this.brainIter = this.brain.iter();
-
-    this.map = {};
-  }
-
-  getColourWithCord(x, y) {
-    const yArr = this.map[y];
-    if (yArr) {
-      return yArr[x] || 0;
-    } else {
-      return 0;
-    }
-  }
-
-  getColour() {
-    return this.getColourWithCord(this.location.x, this.location.y);
-  }
-
-  paint(color) {
-    const yArr = this.map[this.location.y];
-    if (yArr) {
-      yArr[this.location.x] = color;
-    } else {
-      this.map[this.location.y] = { [this.location.x]: color };
-    }
-  }
-
-  turn(turnDirection) {
-    if (turnDirection === 0) {
-      this.direction = (this.direction + 4 - 1) % 4;
-    } else {
-      this.direction = (this.direction + 1) % 4;
-    }
-  }
-
-  move() {
-    switch (this.direction) {
-      case UP:
-        this.location = { x: this.location.x, y: this.location.y + 1 };
-        break;
-      case RIGHT:
-        this.location = { x: this.location.x + 1, y: this.location.y };
-        break;
-      case DOWN:
-        this.location = { x: this.location.x, y: this.location.y - 1 };
-        break;
-      case LEFT:
-        this.location = { x: this.location.x - 1, y: this.location.y };
-        break;
-    }
-  }
-
-  run() {
-    let ct = 0;
-    while (!this.brain.stop) {
-      const curColour = ct++ > 0 ? this.getColour() : 1;
-      this.brain.input.push(curColour);
-
-      const nextColour = this.brainIter.next().value;
-      this.paint(nextColour);
-
-      if (this.brain.stop) return;
-
-      const turnDirection = this.brainIter.next().value;
-      this.turn(turnDirection);
-      this.move();
-    }
-  }
-
-  paintedOnce() {
-    let ct = 0;
-    Object.keys(this.map).forEach(y => {
-      ct += Object.keys(this.map[y]).length;
-    });
-    return ct;
-  }
-
-  print() {
-    function sortNumber(a, b) {
-      return a - b;
-    }
-
-    const ys = Object.keys(this.map)
-      .map(c => parseInt(c))
-      .sort(sortNumber);
-    const minY = ys[0];
-    const maxY = ys[ys.length - 1];
-    const xxx = ys.map(y => {
-      const xs = Object.keys(this.map[y])
-        .map(c => parseInt(c))
-        .sort(sortNumber);
-      return [xs[0], xs[xs.length - 1]];
-    });
-    const minX = xxx.map(x => x[0]).sort(sortNumber)[0];
-    const maxX = xxx
-      .map(x => x[1])
-      .sort(sortNumber)
-      .reverse()[0];
-
-    for (let y = maxY; y >= minY; y--) {
-      let line = "";
-      for (let x = minX; x <= maxX; x++) {
-        const colour = this.getColourWithCord(x, y);
-        if (colour !== 0) {
-          line += "■";
-        } else {
-          line += " ";
-        }
-      }
-      console.log(line);
-    }
-  }
-}
-
 function parseInput(input) {
   return input
     .trim()
     .split(",")
-    .map(str => parseInt(str));
+    .map(line => parseInt(line));
+}
+
+function buildMap(arr) {
+  const code = new IntCode(arr);
+  const iter = code.iter();
+
+  const output = [];
+  while (!code.stop) {
+    const out = iter.next().value;
+    if (!code.stop) {
+      output.push(out);
+    }
+  }
+
+  let points = [];
+  for (let i = 0; i < output.length; i += 3) {
+    points.push({ x: output[i], y: output[i + 1], id: output[i + 2] });
+  }
+
+  console.log(points.map(({ id }) => id).filter(id => id === 2).length);
 }
 
 function read(error, text) {
   const arr = parseInput(text);
-
-  const robot = new Robot(arr);
-  robot.run();
-  console.log(robot.paintedOnce());
-  robot.print();
+  buildMap(arr);
 }
 
 fs.readFile("./i.txt", "UTF8", read);

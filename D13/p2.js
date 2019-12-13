@@ -6,7 +6,7 @@ class IntCode {
     this.position = 0;
     this.relativeBase = 0;
     this.stop = false;
-    this.input = [];
+    this.output = [];
   }
 
   iter() {
@@ -48,8 +48,8 @@ class IntCode {
     this.store(arr, instruction.p3, this.position + 3, p1 * p2);
   }
 
-  storeInput(arr, instruction) {
-    this.store(arr, instruction.p1, this.position + 1, this.input.shift());
+  storeInput(arr, instruction, input) {
+    this.store(arr, instruction.p1, this.position + 1, input);
   }
 
   storeOutput(arr, instruction) {
@@ -130,13 +130,13 @@ class IntCode {
           this.position += 4;
           break;
         case 3:
-          this.storeInput(arr, inst);
+          this.storeInput(arr, inst, yield);
           this.position += 2;
           break;
         case 4:
           ret = this.storeOutput(arr, inst);
           this.position += 2;
-          yield ret;
+          this.output.push(ret);
           break;
         case 5:
           this.position = this.jumpIfTrue(arr, inst);
@@ -165,144 +165,54 @@ class IntCode {
   }
 }
 
-const UP = 0;
-const RIGHT = 1;
-const DOWN = 2;
-const LEFT = 3;
-
-class Robot {
-  constructor(instructions) {
-    this.direction = UP;
-    this.location = { x: 0, y: 0 };
-    this.brain = new IntCode(instructions);
-    this.brainIter = this.brain.iter();
-
-    this.map = {};
-  }
-
-  getColourWithCord(x, y) {
-    const yArr = this.map[y];
-    if (yArr) {
-      return yArr[x] || 0;
-    } else {
-      return 0;
-    }
-  }
-
-  getColour() {
-    return this.getColourWithCord(this.location.x, this.location.y);
-  }
-
-  paint(color) {
-    const yArr = this.map[this.location.y];
-    if (yArr) {
-      yArr[this.location.x] = color;
-    } else {
-      this.map[this.location.y] = { [this.location.x]: color };
-    }
-  }
-
-  turn(turnDirection) {
-    if (turnDirection === 0) {
-      this.direction = (this.direction + 4 - 1) % 4;
-    } else {
-      this.direction = (this.direction + 1) % 4;
-    }
-  }
-
-  move() {
-    switch (this.direction) {
-      case UP:
-        this.location = { x: this.location.x, y: this.location.y + 1 };
-        break;
-      case RIGHT:
-        this.location = { x: this.location.x + 1, y: this.location.y };
-        break;
-      case DOWN:
-        this.location = { x: this.location.x, y: this.location.y - 1 };
-        break;
-      case LEFT:
-        this.location = { x: this.location.x - 1, y: this.location.y };
-        break;
-    }
-  }
-
-  run() {
-    let ct = 0;
-    while (!this.brain.stop) {
-      const curColour = ct++ > 0 ? this.getColour() : 1;
-      this.brain.input.push(curColour);
-
-      const nextColour = this.brainIter.next().value;
-      this.paint(nextColour);
-
-      if (this.brain.stop) return;
-
-      const turnDirection = this.brainIter.next().value;
-      this.turn(turnDirection);
-      this.move();
-    }
-  }
-
-  paintedOnce() {
-    let ct = 0;
-    Object.keys(this.map).forEach(y => {
-      ct += Object.keys(this.map[y]).length;
-    });
-    return ct;
-  }
-
-  print() {
-    function sortNumber(a, b) {
-      return a - b;
-    }
-
-    const ys = Object.keys(this.map)
-      .map(c => parseInt(c))
-      .sort(sortNumber);
-    const minY = ys[0];
-    const maxY = ys[ys.length - 1];
-    const xxx = ys.map(y => {
-      const xs = Object.keys(this.map[y])
-        .map(c => parseInt(c))
-        .sort(sortNumber);
-      return [xs[0], xs[xs.length - 1]];
-    });
-    const minX = xxx.map(x => x[0]).sort(sortNumber)[0];
-    const maxX = xxx
-      .map(x => x[1])
-      .sort(sortNumber)
-      .reverse()[0];
-
-    for (let y = maxY; y >= minY; y--) {
-      let line = "";
-      for (let x = minX; x <= maxX; x++) {
-        const colour = this.getColourWithCord(x, y);
-        if (colour !== 0) {
-          line += "■";
-        } else {
-          line += " ";
-        }
-      }
-      console.log(line);
-    }
-  }
-}
-
 function parseInput(input) {
   return input
     .trim()
     .split(",")
-    .map(str => parseInt(str));
+    .map(line => parseInt(line));
+}
+
+function getPoints(arr) {
+  let points = [];
+  for (let i = 0; i < arr.length; i += 3) {
+    points.push({ x: arr[i], y: arr[i + 1], id: arr[i + 2] });
+  }
+  return points;
+}
+
+function getPaddleDirection(points) {
+  points.reverse();
+  const ball = points.find(p => p.id === 4);
+  const paddle = points.find(p => p.id === 3);
+  if (ball.x > paddle.x) return 1;
+  if (ball.x < paddle.x) return -1;
+  return 0;
+}
+
+function getScore(points) {
+  const scores = points.filter(({ x, y }) => x === -1 && y === 0);
+  return scores[scores.length - 1].id;
+}
+
+function run(arr) {
+  const code = new IntCode(arr);
+  const iter = code.iter();
+
+  iter.next();
+  while (!code.stop) {
+    const points = getPoints(code.output);
+    const dir = getPaddleDirection(points);
+    iter.next(dir);
+  }
+
+  const finalPoints = getPoints(code.output);
+  console.log(getScore(finalPoints));
 }
 
 function read(error, text) {
   const arr = parseInput(text);
-
-  const robot = new Robot(arr);
-  robot.run();
-  console.log(robot.paintedOnce());
-  robot.print();
+  arr[0] = 2;
+  run(arr);
 }
 
 fs.readFile("./i.txt", "UTF8", read);
