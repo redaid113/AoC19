@@ -9,9 +9,6 @@ function parseInput(file) {
 }
 
 function buildMap(camera) {
-  const iter = camera.iter();
-  iter.next();
-
   const map = [];
   let line = 0;
   let x = 0;
@@ -171,8 +168,11 @@ function getCommands(map) {
 
 function read(error, file) {
   const arr = parseInput(file);
+
   arr[0] = 2;
   const camera = new IntCode(arr);
+  const iter = camera.iter();
+  iter.next();
 
   const map = buildMap(camera);
   print(map);
@@ -181,9 +181,31 @@ function read(error, file) {
 
   const commands = getCommands(map);
   console.log(commands.join(","));
-  //   const dust = getDust(camera, map);
 
-  //   console.log(dust);
+  const PATTERN = "A,C,A,C,B,B,C,A,C,B\n";
+
+  const A = "L,12,L,10,R,8,L,12";
+  const B = "L,10,R,12,R,8";
+  const C = "R,8,R,10,R,12";
+  const MOVEMENT = `${A}\n${B}\n${C}\n`;
+
+  const input = str => {
+    for (let i = 0; i < str.length; i++) {
+      iter.next(str.charCodeAt(i));
+    }
+  };
+
+  input(PATTERN);
+  input(MOVEMENT);
+  camera.output = [];
+
+  input("n\n");
+  console.log(camera.output.pop(), camera.output.length);
 }
+//A,C,A,C,B,B,C,A,C,B
+//L,12,L,10,R,8,L,12,R,8,R,10,R,12,L,12,L,10,R,8,L,12,R,8,R,10,R,12,L,10,R,12,R,8,L,10,R,12,R,8,R,8,R,10,R,12,L,12,L,10,R,8,L,12,R,8,R,10,R,12,L,10,R,12,R,8
 
+// A - L,12,L,10,R,8,L,12
+// B - L,10,R,12,R,8
+// C - R,8,R,10,R,12
 fs.readFile("./i.txt", "UTF8", read);
