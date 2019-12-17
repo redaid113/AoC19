@@ -1,5 +1,4 @@
 const fs = require("fs");
-const IntCode = require("../IntCode");
 
 function parseInput(file) {
   return file
@@ -16,7 +15,7 @@ function read(error, file) {
   for (let i = 0; i < 10000; i++) {
     input.push(...arr);
   }
-]  input = input.slice(offset);
+  input = input.slice(offset);
   for (let i = 0; i < 100; i++) {
     for (let i = input.length - 2; i >= 0; i--) {
       input[i] = (input[i] + input[i + 1]) % 10;

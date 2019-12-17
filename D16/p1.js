@@ -1,5 +1,4 @@
 const fs = require("fs");
-const IntCode = require("../IntCode");
 
 function parseInput(file) {
   return file
