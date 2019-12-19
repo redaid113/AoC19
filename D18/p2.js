@@ -148,27 +148,32 @@ function getAvailablePoints(map, start) {
   return found;
 }
 
-function getSortestDistance(start, distances, possible) {
+function getSortestDistance(maps) {
   const cache = {};
 
   const token = keys => `${keys.sort()}`;
-  const read = (from, keys) => {
-    if (!cache[from.val]) {
-      cache[from.val] = {};
+  const read = (froms, keys) => {
+    const [from0, from1, from2, from3] = froms;
+    const from = `${from0.val}${from1.val}${from2.val}${from3.val}`;
+    if (!cache[from]) {
+      cache[from] = {};
       return -1;
     }
     const key = token(keys);
-    const value = cache[from.val][key];
+    const value = cache[from][key];
 
     return value ? value : -1;
   };
-  const write = (from, keys, value) => {
+
+  const write = (froms, keys, value) => {
+    const [from0, from1, from2, from3] = froms;
+    const from = `${from0.val}${from1.val}${from2.val}${from3.val}`;
     const key = token(keys);
-    cache[from.val][key] = value;
+    cache[from][key] = value;
   };
 
-  function getKeys(key, found) {
-    return possible
+  function getKeysPerMap(key, found) {
+    return maps[key.index].possible
       .filter(p => p.val !== key.val)
       .filter(p => !found.includes(p.val))
       .filter(p =>
@@ -176,37 +181,82 @@ function getSortestDistance(start, distances, possible) {
       );
   }
 
-  function short(from, found) {
-    const hit = read(from, found);
+  function getKeys(keys, found) {
+    return keys
+      .map(key => getKeysPerMap(key, found))
+      .reduce((arr, a) => [...arr, ...a], []);
+  }
+
+  function short(froms, found) {
+    const hit = read(froms, found);
     if (hit > 0) {
       return hit;
     }
-    const keys = getKeys(from, found);
+
+    const keys = getKeys(froms, found);
     if (keys.length === 0) return 0;
 
     const smallest = keys
       .map(key => {
-        const distance = distances[from.val][key.val];
-        return distance + short(key, [...found, key.val]);
+        const distance =
+          maps[key.index].distances[froms[key.index].val][key.val];
+
+        const newFroms = [...froms];
+        newFroms[key.index] = key;
+        return distance + short(newFroms, [...found, key.val]);
       })
       .reduce((min, val) => Math.min(min, val), Number.MAX_SAFE_INTEGER);
-    write(from, found, smallest);
+    write(froms, found, smallest);
     return smallest;
   }
 
-  return short(start, []);
+  return short(
+    maps.map(map => map.start),
+    []
+  );
+}
+
+function chunkArr(arr) {
+  function getMap([x1, y1], [x2, y2]) {
+    let map = [];
+    for (let y = y1; y < y2; y++) {
+      map[y - y1] = [];
+      for (let x = x1; x < x2; x++) {
+        map[y - y1][x - x1] = arr[y][x];
+      }
+    }
+    return map;
+  }
+
+  const map1 = getMap([0, 0], [41, 41]);
+  const map2 = getMap([0, 40], [41, 81]);
+  const map3 = getMap([40, 0], [81, 41]);
+  const map4 = getMap([40, 40], [81, 81]);
+
+  return [map1, map2, map3, map4];
+}
+
+function getMaps(arr) {
+  const maps = chunkArr(arr);
+
+  return maps.map((map, index) => {
+    const start = findStart(map);
+    start.index = index;
+    const keys = findKeys(map);
+    const distances = calcDistances(map, keys, start);
+    const possible = getAvailablePoints(map, start);
+    possible.forEach(p => (p.index = index));
+
+    return { start, distances, possible, map };
+  });
 }
 
 function read(error, file) {
-  const map = parseInput(file);
-  const start = findStart(map);
-  const keys = findKeys(map);
+  const arr = parseInput(file);
+  const maps = getMaps(arr);
 
-  const distances = calcDistances(map, keys, start);
-  const possible = getAvailablePoints(map, start);
-  const shortest = getSortestDistance(start, distances, possible);
-
+  const shortest = getSortestDistance(maps);
   console.log(shortest);
 }
 
-fs.readFile("./i.txt", "UTF8", read);
+fs.readFile("./i2.txt", "UTF8", read);
