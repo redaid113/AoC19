@@ -8,16 +8,6 @@ function parseInput(file) {
     .map(num => parseInt(num));
 }
 
-function print(map) {
-  for (let i = 0; i < map.length; i++) {
-    let line = "";
-    for (let j = 0; j < map[i].length; j++) {
-      line += map[i][j];
-    }
-    console.log(line);
-  }
-}
-
 function getOutput(arr, x, y) {
   const camera = new IntCode([...arr]);
   const iter = camera.iter();
@@ -29,10 +19,8 @@ function getOutput(arr, x, y) {
 }
 
 function fullDiagonal(arr, length, { x, y }) {
-  for (let i = 0; i < length; i++) {
-    if (!getOutput(arr, x - i, y + i)) return false;
-  }
-  return true;
+  const diff = length - 1;
+  return getOutput(arr, x - diff, y + diff);
 }
 
 function findSquare(arr, length) {
@@ -49,14 +37,9 @@ function findSquare(arr, length) {
     while (!getOutput(arr, right.x, right.y)) {
       right.x += 1;
     }
-    // return right;
   }
   return { x: right.x - length + 1, y: right.y };
 }
-
-/*
- Find top right to bottom left === 100
-*/
 
 function read(error, file) {
   const arr = parseInput(file);
